@@ -81,6 +81,12 @@ export const CONSTANTS = {
     RIGHT: 'right',
     BOTTOM: 'bottom'
   },
+  VIDEO_PLACEMENT: {
+    TOP: 'top',
+    BOTTOM: 'bottom',
+    LEFT: 'left',
+    RIGHT: 'right'
+  },
   EDIT_NODE_CLASS: {
     SMM_NODE_EDIT_WRAP: 'smm-node-edit-wrap',
     RICH_TEXT_EDIT_WRAP: 'ql-editor',
@@ -162,7 +168,7 @@ export const nodeDataNoStylePropList = [
   'isActive',
   'generalization',
   'richText',
-  'resetRichText',// 重新创建富文本内容，去掉原有样式
+  'resetRichText', // 重新创建富文本内容，去掉原有样式
   'uid',
   'activeStyle',
   'associativeLineTargets',
@@ -180,7 +186,7 @@ export const nodeDataNoStylePropList = [
   'customTextWidth',
   'checkbox',
   'dir',
-  'needUpdate'// 重新创建节点内容
+  'needUpdate' // 重新创建节点内容
 ]
 
 // 错误类型

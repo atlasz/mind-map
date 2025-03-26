@@ -167,6 +167,7 @@ const defaultBtnList = [
   'childNode',
   'deleteNode',
   'image',
+  'video',
   'icon',
   'link',
   'note',

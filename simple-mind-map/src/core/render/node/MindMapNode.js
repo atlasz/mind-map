@@ -210,7 +210,7 @@ class MindMapNode {
   }
 
   //  创建节点的各个内容对象数据
-  // recreateTypes：[] custom、image、icon、text、hyperlink、tag、note、attachment、numbers、prefix、postfix、checkbox
+  // recreateTypes：[] custom、image、icon、text、hyperlink、tag、note、attachment、numbers、prefix、postfix、checkbox、video
   createNodeData(recreateTypes) {
     // 自定义节点内容
     const {
@@ -232,6 +232,7 @@ class MindMapNode {
       'attachment',
       'prefix',
       'postfix',
+      'video',
       ...this.mindMap.nodeInnerPrefixList.map(item => {
         return item.name
       })
@@ -270,6 +271,7 @@ class MindMapNode {
     if (createTypes.note) this._noteData = this.createNoteNode()
     if (createTypes.attachment)
       this._attachmentData = this.createAttachmentNode()
+    if (createTypes.video) this._videoData = this.createVideoNode()
     this.mindMap.nodeInnerPrefixList.forEach(item => {
       if (createTypes[item.name]) {
         this[`_${item.name}Data`] = item.createContent(this)
@@ -1128,6 +1130,186 @@ class MindMapNode {
   // 获取子节点的数量
   getChildrenLength() {
     return this.nodeData.children ? this.nodeData.children.length : 0
+  }
+
+  // 获取节点形状
+  getNodeRect() {
+    // 自定义节点内容
+    if (this.isUseCustomNodeContent()) {
+      const rect = this.measureCustomNodeContentSize(this._customNodeContent)
+      return {
+        width: this.hasCustomWidth() ? this.customTextWidth : rect.width,
+        height: rect.height
+      }
+    }
+    const { TAG_PLACEMENT, IMG_PLACEMENT, VIDEO_PLACEMENT } = CONSTANTS
+    const { textContentMargin } = this.mindMap.opt
+    const tagPlacement = this.getStyle('tagPlacement') || TAG_PLACEMENT.RIGHT
+    const tagIsBottom = tagPlacement === TAG_PLACEMENT.BOTTOM
+    const imgPlacement = this.getStyle('imgPlacement') || IMG_PLACEMENT.TOP
+    const videoPlacement =
+      this.getStyle('videoPlacement') || VIDEO_PLACEMENT.TOP
+    // 宽高
+    let imgContentWidth = 0
+    let imgContentHeight = 0
+    let videoContentWidth = 0
+    let videoContentHeight = 0
+    let textContentWidth = 0
+    let textContentHeight = 0
+    let tagContentWidth = 0
+    let tagContentHeight = 0
+    let spaceCount = 0
+    // 存在图片
+    if (this._imgData) {
+      imgContentWidth = this._imgData.width
+      imgContentHeight = this._imgData.height
+    }
+    // 存在视频
+    if (this._videoData) {
+      videoContentWidth = this._videoData.width
+      videoContentHeight = this._videoData.height
+    }
+    // 库前置内容
+    this.mindMap.nodeInnerPrefixList.forEach(item => {
+      const itemData = this[`_${item.name}Data`]
+      if (itemData) {
+        textContentWidth += itemData.width
+        textContentHeight = Math.max(textContentHeight, itemData.height)
+        spaceCount++
+      }
+    })
+    // 自定义前置内容
+    if (this._prefixData) {
+      textContentWidth += this._prefixData.width
+      textContentHeight = Math.max(textContentHeight, this._prefixData.height)
+      spaceCount++
+    }
+    // 图标
+    if (this._iconData.length > 0) {
+      textContentWidth +=
+        this._iconData.reduce((sum, cur) => {
+          textContentHeight = Math.max(textContentHeight, cur.height)
+          return (sum += cur.width)
+        }, 0) +
+        (this._iconData.length - 1) * textContentMargin
+      spaceCount++
+    }
+    // 文字
+    if (this._textData) {
+      textContentWidth += this._textData.width
+      textContentHeight = Math.max(textContentHeight, this._textData.height)
+      spaceCount++
+    }
+    // 超链接
+    if (this._hyperlinkData) {
+      textContentWidth += this._hyperlinkData.width
+      textContentHeight = Math.max(
+        textContentHeight,
+        this._hyperlinkData.height
+      )
+      spaceCount++
+    }
+    // 标签
+    if (this._tagData.length > 0) {
+      const { width: totalTagWidth, height: maxTagHeight } =
+        this.getTagContentSize(textContentMargin)
+      if (tagIsBottom) {
+        // 文字下方
+        tagContentWidth = totalTagWidth
+        tagContentHeight = maxTagHeight
+      } else {
+        // 否则在右侧
+        textContentWidth += totalTagWidth
+        textContentHeight = Math.max(textContentHeight, maxTagHeight)
+        spaceCount++
+      }
+    }
+    // 备注
+    if (this._noteData) {
+      textContentWidth += this._noteData.width
+      textContentHeight = Math.max(textContentHeight, this._noteData.height)
+      spaceCount++
+    }
+    // 附件
+    if (this._attachmentData) {
+      textContentWidth += this._attachmentData.width
+      textContentHeight = Math.max(
+        textContentHeight,
+        this._attachmentData.height
+      )
+      spaceCount++
+    }
+    // 自定义后置内容
+    if (this._postfixData) {
+      textContentWidth += this._postfixData.width
+      textContentHeight = Math.max(textContentHeight, this._postfixData.height)
+      spaceCount++
+    }
+    textContentWidth += (spaceCount - 1) * textContentMargin
+    // 文字内容部分的尺寸
+    if (tagIsBottom && textContentWidth > 0 && tagContentHeight > 0) {
+      this._rectInfo.textContentWidthWithoutTag = textContentWidth
+      textContentWidth = Math.max(textContentWidth, tagContentWidth)
+      textContentHeight =
+        textContentHeight + textContentMargin + tagContentHeight
+    }
+    this._rectInfo.textContentWidth = textContentWidth
+    this._rectInfo.textContentHeight = textContentHeight
+
+    // 纯内容宽高
+    let _width = 0
+    let _height = 0
+
+    // 处理图片和文本
+    let withImageWidth = 0
+    let withImageHeight = 0
+    if ([IMG_PLACEMENT.TOP, IMG_PLACEMENT.BOTTOM].includes(imgPlacement)) {
+      // 图片在上下
+      withImageWidth = Math.max(imgContentWidth, textContentWidth)
+      withImageHeight =
+        imgContentHeight +
+        textContentHeight +
+        this.getImgTextMarin('v', 0, 0, imgContentHeight, textContentHeight)
+    } else {
+      // 图片在左右
+      withImageWidth =
+        imgContentWidth +
+        textContentWidth +
+        this.getImgTextMarin('h', imgContentWidth, textContentWidth)
+      withImageHeight = Math.max(imgContentHeight, textContentHeight)
+    }
+
+    // 处理视频和前面的内容
+    if (
+      [VIDEO_PLACEMENT.TOP, VIDEO_PLACEMENT.BOTTOM].includes(videoPlacement)
+    ) {
+      // 视频在上下
+      _width = Math.max(videoContentWidth, withImageWidth)
+      _height =
+        videoContentHeight +
+        withImageHeight +
+        (videoContentHeight > 0 && withImageHeight > 0 ? textContentMargin : 0)
+    } else {
+      // 视频在左右
+      _width =
+        videoContentWidth +
+        withImageWidth +
+        (videoContentWidth > 0 && withImageWidth > 0 ? textContentMargin : 0)
+      _height = Math.max(videoContentHeight, withImageHeight)
+    }
+
+    const { paddingX, paddingY } = this.getPaddingVale()
+    // 计算节点形状需要的附加内边距
+    const { paddingX: shapePaddingX, paddingY: shapePaddingY } =
+      this.shapeInstance.getShapePadding(_width, _height, paddingX, paddingY)
+    this.shapePadding.paddingX = shapePaddingX
+    this.shapePadding.paddingY = shapePaddingY
+    // 边框宽度，因为边框是以中线向两端发散，所以边框会超出节点
+    const borderWidth = this.getBorderWidth()
+    return {
+      width: _width + paddingX * 2 + shapePaddingX * 2 + borderWidth,
+      height: _height + paddingY * 2 + shapePaddingY * 2 + borderWidth
+    }
   }
 }
 

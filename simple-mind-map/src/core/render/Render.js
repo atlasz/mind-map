@@ -1554,7 +1554,7 @@ class Render {
     this.setNodeDataRender(node, data)
     // 更新了连线的样式
     if (lineStyleProps.includes(prop)) {
-      (node.parent || node).renderLine(true)
+      ;(node.parent || node).renderLine(true)
     }
   }
 
@@ -1571,7 +1571,7 @@ class Render {
       }
     })
     if (hasLineStyleProps) {
-      (node.parent || node).renderLine(true)
+      ;(node.parent || node).renderLine(true)
     }
   }
 

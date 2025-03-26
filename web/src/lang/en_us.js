@@ -213,6 +213,10 @@ export default {
     title: 'Image',
     imgTitle: 'Title'
   },
+  nodeVideo: {
+    title: 'Video',
+    videoTitle: 'Video Title'
+  },
   nodeNote: {
     title: 'Note'
   },
@@ -299,6 +303,7 @@ export default {
     insertChildNode: 'Child node',
     deleteNode: 'Delete node',
     image: 'Image',
+    video: 'Video',
     icon: 'Icon',
     link: 'Link',
     note: 'Note',

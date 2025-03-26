@@ -568,6 +568,83 @@ function isUseCustomNodeContent() {
   return !!this._customNodeContent
 }
 
+//  创建视频节点
+function createVideoNode() {
+  const video = this.getData('video')
+  if (!video) {
+    return
+  }
+  const videoSize = this.getVideoShowSize()
+  // 创建视频的容器
+  const foreignObject = createForeignObjectNode({
+    el: document.createElementNS('http://www.w3.org/1999/xhtml', 'div'),
+    width: videoSize[0],
+    height: videoSize[1]
+  })
+
+  // 创建视频元素
+  const videoEl = document.createElement('video')
+  videoEl.src = video
+  videoEl.setAttribute('width', '100%')
+  videoEl.setAttribute('height', '100%')
+  videoEl.setAttribute('controls', 'controls')
+
+  // 如果指定了视频标题，添加标题
+  if (this.getData('videoTitle')) {
+    videoEl.setAttribute('title', this.getData('videoTitle'))
+  }
+
+  // 添加预览图
+  videoEl.setAttribute('poster', this.getData('videoPoster') || '')
+
+  // 插入视频到容器
+  foreignObject.node.firstChild.appendChild(videoEl)
+
+  // 添加事件监听
+  videoEl.addEventListener('click', e => {
+    this.mindMap.emit('node_video_click', this, videoEl, e)
+  })
+
+  videoEl.addEventListener('dblclick', e => {
+    this.mindMap.emit('node_video_dblclick', this, e, videoEl)
+  })
+
+  foreignObject.node.addEventListener('mouseenter', e => {
+    this.mindMap.emit('node_video_mouseenter', this, videoEl, e)
+  })
+
+  foreignObject.node.addEventListener('mouseleave', e => {
+    this.mindMap.emit('node_video_mouseleave', this, videoEl, e)
+  })
+
+  foreignObject.node.addEventListener('mousemove', e => {
+    this.mindMap.emit('node_video_mousemove', this, videoEl, e)
+  })
+
+  return {
+    node: foreignObject,
+    width: videoSize[0],
+    height: videoSize[1]
+  }
+}
+
+//  获取视频显示宽高
+function getVideoShowSize() {
+  const { custom, width, height } = this.getData('videoSize') || {
+    custom: false,
+    width: 320,
+    height: 240
+  }
+  // 如果是自定义了视频的宽高，那么不受最大宽高限制
+  if (custom) return [width, height]
+  return resizeImgSize(
+    width,
+    height,
+    this.mindMap.themeConfig.videoMaxWidth || 320,
+    this.mindMap.themeConfig.videoMaxHeight || 240
+  )
+}
+
 export default {
   createImgNode,
   getImgShowSize,
@@ -581,5 +658,7 @@ export default {
   getNoteContentPosition,
   getNodeIconSize,
   measureCustomNodeContentSize,
-  isUseCustomNodeContent
+  isUseCustomNodeContent,
+  createVideoNode,
+  getVideoShowSize
 }

@@ -1,6 +1,7 @@
 import { CONSTANTS } from '../../../constants/constant'
 import { G, Rect } from '@svgdotjs/svg.js'
 import { createForeignObjectNode } from '../../../utils/index'
+import { camelCaseToHyphen } from '../../../utils/index'
 
 // 根据图片放置位置返回图片和文本的间距值
 function getImgTextMarin(dir, imgWidth, textWidth, imgHeight, textHeight) {
@@ -51,11 +52,18 @@ function getNodeRect() {
   let textContentHeight = 0
   let tagContentWidth = 0
   let tagContentHeight = 0
+  let videoContentWidth = 0
+  let videoContentHeight = 0
   let spaceCount = 0
   // 存在图片
   if (this._imgData) {
     imgContentWidth = this._imgData.width
     imgContentHeight = this._imgData.height
+  }
+  // 存在视频
+  if (this._videoData) {
+    videoContentWidth = this._videoData.width
+    videoContentHeight = this._videoData.height
   }
   // 库前置内容
   this.mindMap.nodeInnerPrefixList.forEach(item => {
@@ -140,21 +148,46 @@ function getNodeRect() {
   // 纯内容宽高
   let _width = 0
   let _height = 0
-  if ([IMG_PLACEMENT.TOP, IMG_PLACEMENT.BOTTOM].includes(imgPlacement)) {
-    // 图片在上下
-    _width = Math.max(imgContentWidth, textContentWidth)
-    _height =
-      imgContentHeight +
-      textContentHeight +
-      this.getImgTextMarin('v', 0, 0, imgContentHeight, textContentHeight)
-  } else {
-    // 图片在左右
-    _width =
-      imgContentWidth +
-      textContentWidth +
-      this.getImgTextMarin('h', imgContentWidth, textContentWidth)
-    _height = Math.max(imgContentHeight, textContentHeight)
+  
+  // 处理图片位置
+  const handleImageLayout = () => {
+    if ([IMG_PLACEMENT.TOP, IMG_PLACEMENT.BOTTOM].includes(imgPlacement)) {
+      // 图片在上下
+      _width = Math.max(imgContentWidth, textContentWidth)
+      _height =
+        imgContentHeight +
+        textContentHeight +
+        this.getImgTextMarin('v', 0, 0, imgContentHeight, textContentHeight)
+    } else {
+      // 图片在左右
+      _width =
+        imgContentWidth +
+        textContentWidth +
+        this.getImgTextMarin('h', imgContentWidth, textContentWidth)
+      _height = Math.max(imgContentHeight, textContentHeight)
+    }
   }
+  
+  // 处理视频位置
+  const videoPlacement = this.getStyle('videoPlacement') || 'top'
+  if (this._videoData) {
+    // 先计算图片和文字的布局
+    handleImageLayout()
+    
+    if (videoPlacement === 'top' || videoPlacement === 'bottom') {
+      // 视频在上下
+      _width = Math.max(_width, videoContentWidth)
+      _height += videoContentHeight + textContentMargin
+    } else {
+      // 视频在左右
+      _width += videoContentWidth + textContentMargin
+      _height = Math.max(_height, videoContentHeight)
+    }
+  } else {
+    // 没有视频，仅处理图片和文字
+    handleImageLayout()
+  }
+  
   const { paddingX, paddingY } = this.getPaddingVale()
   // 计算节点形状需要的附加内边距
   const { paddingX: shapePaddingX, paddingY: shapePaddingY } =
@@ -408,30 +441,60 @@ function layout() {
   const { width: bboxWidth, height: bboxHeight } = textContentNested.bbox()
   let translateX = 0
   let translateY = 0
-  switch (imgPlacement) {
-    case IMG_PLACEMENT.TOP:
-      translateX = width / 2 - bboxWidth / 2
-      translateY =
-        paddingY + // 内边距
-        imgHeight + // 图片高度
-        this.getImgTextMarin('v', 0, 0, imgHeight, textContentHeightWithTag) // 和图片的间距
-      break
-    case IMG_PLACEMENT.BOTTOM:
-      translateX = width / 2 - bboxWidth / 2
-      translateY = paddingY
-      break
-    case IMG_PLACEMENT.LEFT:
-      translateX =
-        imgWidth +
-        paddingX +
-        this.getImgTextMarin('h', imgWidth, textContentWidth)
-      translateY = height / 2 - bboxHeight / 2
-      break
-    case IMG_PLACEMENT.RIGHT:
-      translateX = paddingX
-      translateY = height / 2 - bboxHeight / 2
-      break
+  
+  // 图片和视频的位置处理
+  const videoPlacement = this.getStyle('videoPlacement') || 'top'
+  const hasVideo = !!this._videoData
+  
+  // 计算文本内容的位置
+  if (hasVideo) {
+    // 有视频时，根据视频位置来确定文本位置
+    switch (videoPlacement) {
+      case 'top':
+        translateX = width / 2 - bboxWidth / 2
+        translateY = paddingY + this._videoData.height + textContentMargin
+        break
+      case 'bottom':
+        translateX = width / 2 - bboxWidth / 2
+        translateY = paddingY
+        break
+      case 'left':
+        translateX = paddingX + this._videoData.width + textContentMargin
+        translateY = height / 2 - bboxHeight / 2
+        break
+      case 'right':
+        translateX = paddingX
+        translateY = height / 2 - bboxHeight / 2
+        break
+    }
+  } else {
+    // 没有视频时，按照原有图片位置逻辑处理
+    switch (imgPlacement) {
+      case IMG_PLACEMENT.TOP:
+        translateX = width / 2 - bboxWidth / 2
+        translateY =
+          paddingY + // 内边距
+          imgHeight + // 图片高度
+          this.getImgTextMarin('v', 0, 0, imgHeight, textContentHeightWithTag) // 和图片的间距
+        break
+      case IMG_PLACEMENT.BOTTOM:
+        translateX = width / 2 - bboxWidth / 2
+        translateY = paddingY
+        break
+      case IMG_PLACEMENT.LEFT:
+        translateX =
+          imgWidth +
+          paddingX +
+          this.getImgTextMarin('h', imgWidth, textContentWidth)
+        translateY = height / 2 - bboxHeight / 2
+        break
+      case IMG_PLACEMENT.RIGHT:
+        translateX = paddingX
+        translateY = height / 2 - bboxHeight / 2
+        break
+    }
   }
+  
   textContentNested.translate(translateX, translateY)
   addHoverNode()
   if (this._customContentAddToNodeAdd && this._customContentAddToNodeAdd.el) {
@@ -451,6 +514,36 @@ function layout() {
     }
   }
   this.mindMap.emit('node_layout_end', this)
+
+  // 处理视频
+  if (this._videoData) {
+    // 初始化视频节点位置变量
+    let videoNodeX = paddingX
+    let videoNodeY = paddingY
+    
+    // 根据视频位置计算坐标
+    if (videoPlacement === 'top') {
+      // 视频在顶部
+      videoNodeX = width / 2 - this._videoData.width / 2
+      videoNodeY = paddingY
+    } else if (videoPlacement === 'right') {
+      // 视频在右侧
+      videoNodeX = width - paddingX - this._videoData.width
+      videoNodeY = height / 2 - this._videoData.height / 2
+    } else if (videoPlacement === 'bottom') {
+      // 视频在底部
+      videoNodeX = width / 2 - this._videoData.width / 2
+      videoNodeY = height - paddingY - this._videoData.height
+    } else if (videoPlacement === 'left') {
+      // 视频在左侧
+      videoNodeX = paddingX
+      videoNodeY = height / 2 - this._videoData.height / 2
+    }
+    
+    // 设置视频节点位置
+    this._videoData.node.x(videoNodeX).y(videoNodeY)
+    this.group.add(this._videoData.node)
+  }
 }
 
 export default {

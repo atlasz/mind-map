@@ -38,7 +38,14 @@ class Fishbone extends Base {
       null,
       (node, parent, isRoot, layerIndex, index, ancestors) => {
         // 创建节点
-        let newNode = this.createNode(node, parent, isRoot, layerIndex, index, ancestors)
+        let newNode = this.createNode(
+          node,
+          parent,
+          isRoot,
+          layerIndex,
+          index,
+          ancestors
+        )
         // 根节点定位在画布中心位置
         if (isRoot) {
           this.setNodeCenter(newNode)

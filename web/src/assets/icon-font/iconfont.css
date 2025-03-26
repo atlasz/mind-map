@@ -17,6 +17,10 @@
   content: "\e6b5";
 }
 
+.iconshipin:before {
+  content: "\e650";
+}
+
 .iconprinting:before {
   content: "\ea28";
 }

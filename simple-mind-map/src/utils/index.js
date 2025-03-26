@@ -250,10 +250,53 @@ export const imgToDataUrl = (src, returnBlob = false) => {
         reject(e)
       }
     }
-    img.onerror = e => {
-      reject(e)
+    img.onerror = err => {
+      reject(err)
     }
     img.src = src
+  })
+}
+
+// 视频转成dataURL（仅获取第一帧作为封面）
+export const videoToDataUrl = (src, returnBlob = false) => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    // 跨域视频需要添加这个属性
+    video.setAttribute('crossOrigin', 'anonymous')
+    video.onloadeddata = () => {
+      try {
+        let canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        let ctx = canvas.getContext('2d')
+        // 视频第一帧绘制到canvas里
+        ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight)
+        if (returnBlob) {
+          canvas.toBlob(blob => {
+            resolve({
+              dataUrl: URL.createObjectURL(blob),
+              width: video.videoWidth,
+              height: video.videoHeight
+            })
+          })
+        } else {
+          resolve({
+            dataUrl: canvas.toDataURL(),
+            width: video.videoWidth,
+            height: video.videoHeight
+          })
+        }
+      } catch (e) {
+        reject(e)
+      }
+    }
+    video.onerror = err => {
+      reject(err)
+    }
+    // 设置视频只需要加载到第一帧
+    video.preload = 'metadata'
+    video.currentTime = 0
+    video.src = src
   })
 }
 
@@ -508,7 +551,7 @@ export const loadImage = imgFile => {
 
 // 移除字符串中的html实体
 export const removeHTMLEntities = str => {
-  [['&nbsp;', '&#160;']].forEach(item => {
+  ;[['&nbsp;', '&#160;']].forEach(item => {
     str = str.replace(new RegExp(item[0], 'g'), item[1])
   })
   return str
@@ -1069,7 +1112,7 @@ export const generateColorByContent = str => {
 
 //  html转义
 export const htmlEscape = str => {
-  [
+  ;[
     ['&', '&amp;'],
     ['<', '&lt;'],
     ['>', '&gt;']

@@ -3,7 +3,8 @@ import {
   imgToDataUrl,
   parseDataUrl,
   getTextFromHtml,
-  createUid
+  createUid,
+  videoToDataUrl
 } from './index'
 import { formatGetNodeGeneralization } from '../utils/index'
 
@@ -170,6 +171,91 @@ export const handleNodeImageToXmind = async (
         src: 'xap:resources/' + imgName,
         width: node.data.imageSize.width,
         height: node.data.imageSize.height
+      }
+      resolve()
+    } catch (error) {
+      console.log(error)
+      resolve()
+    }
+  }
+}
+
+// 解析xmind数据时，解析其中的视频数据
+export const handleNodeVideoFromXmind = async (
+  node,
+  newNode,
+  promiseList,
+  files
+) => {
+  if (node.video && /\.(mp4|webm|ogg)$/.test(node.video.src)) {
+    // 处理异步逻辑
+    let resolve = null
+    const promise = new Promise(_resolve => {
+      resolve = _resolve
+    })
+    promiseList.push(promise)
+    try {
+      // 读取视频
+      const videoType = /\.([^.]+)$/.exec(node.video.src)[1]
+      const videoBase64 =
+        `data:video/${videoType};base64,` +
+        (await files['resources/' + node.video.src.split('/')[1]].async(
+          'base64'
+        ))
+      newNode.data.video = videoBase64
+      // 视频尺寸
+      if (!node.video.width && !node.video.height) {
+        newNode.data.videoSize = {
+          width: 320, // 默认宽度
+          height: 240 // 默认高度
+        }
+      } else {
+        newNode.data.videoSize = {
+          width: node.video.width,
+          height: node.video.height
+        }
+      }
+      resolve()
+    } catch (error) {
+      console.log(error)
+      resolve()
+    }
+  }
+}
+
+// 导出为xmind时，处理视频数据
+export const handleNodeVideoToXmind = async (
+  node,
+  newData,
+  promiseList,
+  videoList
+) => {
+  if (node.data.video) {
+    // 处理异步逻辑
+    let resolve = null
+    let promise = new Promise(_resolve => {
+      resolve = _resolve
+    })
+    promiseList.push(promise)
+    try {
+      let videoName = ''
+      let videoData = node.data.video
+      // base64之外的其他视频要先转换成data:url的缩略图
+      if (!/^data:/.test(node.data.video)) {
+        const videoResult = await videoToDataUrl(node.data.video)
+        videoData = videoResult.dataUrl
+      }
+      // 从data:url中解析出视频类型和base64
+      let dataUrlRes = parseDataUrl(videoData)
+      videoName = 'video_' + videoList.length + '.' + dataUrlRes.type
+      videoList.push({
+        name: videoName,
+        data: dataUrlRes.base64
+      })
+      newData.video = {
+        src: 'xap:resources/' + videoName,
+        width: node.data.videoSize.width,
+        height: node.data.videoSize.height
       }
       resolve()
     } catch (error) {
